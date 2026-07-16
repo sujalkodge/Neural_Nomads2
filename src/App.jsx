@@ -30,7 +30,12 @@ import {
   LayoutDashboard,
   LogOut,
   ChevronRight,
-  UserCheck
+  ChevronLeft,
+  UserCheck,
+  UploadCloud,
+  FileWarning,
+  Users,
+  IndianRupee
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -54,6 +59,45 @@ const INITIAL_ALERTS = [
   { id: 3, time: '08:30 AM', line: 'Marketing', text: 'Social Ad campaign budget limit reached', severity: 'low', status: 'active', type: 'budget' }
 ];
 
+const AI_RESOLUTION_REPORTS = {
+  'Machine Cycle Glitch Detected on Line 3': {
+    analysis: 'Autonomous agent detected a cycle synchronization anomaly in Line 3 conveyor belt drive belt systems, leading to a temporary feedback buffer overload in the telemetry registers.',
+    steps: [
+      'Isolated conveyor belt Line 3 motor drives to prevent mechanical backlash.',
+      'Conducted telemetry scan and identified 450ms packet delivery delay in active feedback sensor.',
+      'Flushed conveyor motor driver registry cache and calibrated feedback alignment thresholds.',
+      'Initiated driver software hot-patch override. Line operational cycle timings confirmed stable (less than 0.05% variance).'
+    ]
+  },
+  'Micro-defect Spike on Assembly Line B': {
+    analysis: 'Optical quality control modules registered a sudden defect spike caused by lens alignment drift on active camera nodes due to localized structure vibration.',
+    steps: [
+      'Analyzed defect image packets in real-time, isolating micro-defects to the camera lens drift.',
+      'Applied localized lens autofocus stabilizer correction algorithms to dynamic optical modules.',
+      'Recalibrated threshold tolerance values on structural quality validation nodes.',
+      'Verified alignment checks; defect rates successfully returned to nominal levels (less than 0.02%).'
+    ]
+  },
+  'Social Ad campaign budget limit reached': {
+    analysis: 'Facebook and Google Marketing API integration reported campaign bids hit their diurnal budget limit of $10,000, causing active marketing threads to pause.',
+    steps: [
+      'Intercepted diurnal budget cap warning signals from the advertising portal.',
+      'Dynamically reallocated bids to off-peak slots to sustain brand impressions at a 30% discount.',
+      'Disabled underperforming creative ad assets to optimize ROI within constraints.',
+      'Flagged budget status to Marketing Admin for optional supplement injections.'
+    ]
+  },
+  'generic': {
+    analysis: 'AI anomaly detection algorithms flagged behavioral telemetry values deviating from the standard baseline within system operation loops.',
+    steps: [
+      'Isolated anomaly propagation threads to protect other system modules.',
+      'Executed automated process diagnostics and memory verification loops.',
+      'Restored system registry values to standard operational baseline.',
+      'Confirmed network latencies and overall service availability ratios have stabilized.'
+    ]
+  }
+};
+
 const INITIAL_MEETINGS = [
   { id: 1, title: 'Cross-Department Operational Sync', time: '10:30 AM', date: '2026-07-07', department: 'Operations', invitees: ['All Staff', 'Manager'], status: 'pending', rsvp: 'none' },
   { id: 2, title: 'Client Briefing: Alpha Logistics', time: '02:00 PM', date: '2026-07-07', department: 'Logistics', invitees: ['Manager', 'Lead Logistics Engineer'], status: 'confirmed', rsvp: 'none' },
@@ -73,24 +117,322 @@ const INITIAL_LEAVE_REQUESTS = [
 ];
 
 const INITIAL_CORRELATION_DATA = [
-  { name: '06-25', adSpend: 1200, registerSales: 3400, factoryCapacity: 85 },
-  { name: '06-26', adSpend: 1500, registerSales: 4100, factoryCapacity: 88 },
-  { name: '06-27', adSpend: 1800, registerSales: 4800, factoryCapacity: 92 },
-  { name: '06-28', adSpend: 900, registerSales: 2900, factoryCapacity: 75 },
-  { name: '06-29', adSpend: 2200, registerSales: 5600, factoryCapacity: 95 },
-  { name: '06-30', adSpend: 2400, registerSales: 6100, factoryCapacity: 96 },
-  { name: '07-01', adSpend: 1600, registerSales: 4400, factoryCapacity: 84 },
-  { name: '07-02', adSpend: 1900, registerSales: 5200, factoryCapacity: 89 },
-  { name: '07-03', adSpend: 2500, registerSales: 6800, factoryCapacity: 98 },
-  { name: '07-04', adSpend: 1100, registerSales: 3100, factoryCapacity: 50 }, // Holiday drop
-  { name: '07-05', adSpend: 2000, registerSales: 5400, factoryCapacity: 87 },
-  { name: '07-06', adSpend: 2100, registerSales: 5800, factoryCapacity: 91 }
+  { name: '06-25', adSpend: 96000, registerSales: 272000, factoryCapacity: 85 },
+  { name: '06-26', adSpend: 120000, registerSales: 328000, factoryCapacity: 88 },
+  { name: '06-27', adSpend: 144000, registerSales: 384000, factoryCapacity: 92 },
+  { name: '06-28', adSpend: 72000, registerSales: 232000, factoryCapacity: 75 },
+  { name: '06-29', adSpend: 176000, registerSales: 448000, factoryCapacity: 95 },
+  { name: '06-30', adSpend: 192000, registerSales: 488000, factoryCapacity: 96 },
+  { name: '07-01', adSpend: 128000, registerSales: 352000, factoryCapacity: 84 },
+  { name: '07-02', adSpend: 152000, registerSales: 416000, factoryCapacity: 89 },
+  { name: '07-03', adSpend: 200000, registerSales: 544000, factoryCapacity: 98 },
+  { name: '07-04', adSpend: 88000, registerSales: 248000, factoryCapacity: 50 }, // Holiday drop
+  { name: '07-05', adSpend: 160000, registerSales: 432000, factoryCapacity: 87 },
+  { name: '07-06', adSpend: 168000, registerSales: 464000, factoryCapacity: 91 }
 ];
 
 export default function App() {
   // Navigation & Role states
   const [role, setRole] = useState('logged-out'); // 'logged-out' | 'manager' | 'employee'
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'scheduler' | 'leaves' | 'chatbot'
+  const [activeAlertsTab, setActiveAlertsTab] = useState('system'); // 'system' | 'reports'
+  const [user, setUser] = useState(null);
+  const [authType, setAuthType] = useState('login'); // 'login' | 'register'
+  
+  // Auth Form State
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [regUsername, setRegUsername] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regRole, setRegRole] = useState('employee');
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authSuccess, setAuthSuccess] = useState(''); // success message shown on login after registration
+
+  // Manager: Employee registry
+  const [employeeCount, setEmployeeCount] = useState(0);
+  const [registeredEmployees, setRegisteredEmployees] = useState([]);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedAlertForResolution, setSelectedAlertForResolution] = useState(null);
+  const [isSavingHours, setIsSavingHours] = useState(false);
+  const [saveHoursSuccess, setSaveHoursSuccess] = useState('');
+  const [showLogHoursModal, setShowLogHoursModal] = useState(false);
+  const [employeeLogHours, setEmployeeLogHours] = useState({
+    monday: { workHours: 8, overtimeHours: 0 },
+    tuesday: { workHours: 8, overtimeHours: 0 },
+    wednesday: { workHours: 8, overtimeHours: 0 },
+    thursday: { workHours: 8, overtimeHours: 0 },
+    friday: { workHours: 8, overtimeHours: 0 }
+  });
+  const [logHoursError, setLogHoursError] = useState('');
+
+
+
+  // Employee: Issue / Problem submissions
+  const [issues, setIssues] = useState([]);
+  const [issueForm, setIssueForm] = useState({ title: '', category: 'operational', description: '', priority: 'medium' });
+  const [issueSubmitSuccess, setIssueSubmitSuccess] = useState('');
+
+  // Verify token on load
+  useEffect(() => {
+    const verifyUserSession = async () => {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      
+      try {
+        setAuthLoading(true);
+        const res = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (res.ok) {
+          const userData = await res.json();
+          setUser(userData);
+          setRole(userData.role);
+        } else {
+          localStorage.removeItem('auth_token');
+        }
+      } catch (error) {
+        console.error('Session verification error:', error);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+    verifyUserSession();
+  }, []);
+
+  // Handle login submit
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    if (!loginIdentifier || !loginPassword) {
+      setAuthError('Please fill in all fields.');
+      return;
+    }
+    
+    try {
+      setAuthLoading(true);
+      setAuthError('');
+      setAuthSuccess('');
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          loginIdentifier,
+          password: loginPassword
+        })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+      
+      localStorage.setItem('auth_token', data.token);
+      setUser(data.user);
+      setRole(data.user.role);
+      
+      // Clear forms
+      setLoginIdentifier('');
+      setLoginPassword('');
+    } catch (err) {
+      setAuthError(err.message || 'Incorrect credentials or database server is offline.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Fetch employee list whenever manager is logged in
+  useEffect(() => {
+    if (role !== 'manager') return;
+    const fetchEmployees = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch('/api/manager/employees', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEmployeeCount(data.count);
+          setRegisteredEmployees(data.employees);
+        }
+      } catch (e) {
+        console.error('Failed to fetch employees:', e);
+      }
+    };
+    fetchEmployees();
+  }, [role]);
+
+  // Handle employee logging their own hours
+  const handleEmployeeLogHours = async (e) => {
+    e.preventDefault();
+    setIsSavingHours(true);
+    setLogHoursError('');
+    
+    // Validate daily hours limit (24 hours per day)
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    for (const day of days) {
+      const dayData = employeeLogHours[day];
+      const sum = Number(dayData.workHours || 0) + Number(dayData.overtimeHours || 0);
+      if (sum > 24) {
+        setLogHoursError(`Active hours for ${day.toUpperCase()} cannot exceed 24 hours (Current: ${sum}h).`);
+        setIsSavingHours(false);
+        return;
+      }
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch('/api/employee/hours', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ dailyHours: employeeLogHours })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update hours');
+      
+      // Update local logged-in user profile state
+      setUser(data);
+      setSaveHoursSuccess('Your daily work hours have been successfully logged!');
+      setTimeout(() => {
+        setSaveHoursSuccess('');
+        setShowLogHoursModal(false);
+      }, 2000);
+    } catch (err) {
+      console.error('Error logging hours:', err);
+      setLogHoursError(err.message || 'Error occurred while logging hours.');
+    } finally {
+      setIsSavingHours(false);
+    }
+  };
+
+
+  // Handle employee issue submission → persisted to MongoDB
+  const handleSubmitIssue = async (e) => {
+    e.preventDefault();
+    if (!issueForm.title || !issueForm.description) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch('/api/issues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(issueForm)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setIssues(prev => [saved, ...prev]);
+        setIssueForm({ title: '', category: 'operational', description: '', priority: 'medium' });
+        setIssueSubmitSuccess('Issue submitted! Management has been notified in real-time.');
+        setTimeout(() => setIssueSubmitSuccess(''), 4000);
+      } else {
+        const err = await res.json();
+        setIssueSubmitSuccess(`Error: ${err.message}`);
+      }
+    } catch (error) {
+      console.error('Issue submit failed:', error);
+      setIssueSubmitSuccess('Network error. Please try again.');
+    }
+  };
+
+  // Fetch issues — employee sees own, manager sees all (with 10s polling)
+  useEffect(() => {
+    if (role === 'logged-out') return;
+    const fetchIssues = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch('/api/issues', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setIssues(data);
+        }
+      } catch (e) { console.error('Failed to fetch issues:', e); }
+    };
+    fetchIssues();
+    const interval = setInterval(fetchIssues, 10000); // poll every 10s
+    return () => clearInterval(interval);
+  }, [role]);
+
+  // Manager: resolve an employee-reported issue
+  const handleResolveIssue = async (issueId) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/issues/${issueId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'resolved' })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setIssues(prev => prev.map(i => i._id === issueId ? updated : i));
+      }
+    } catch (e) { console.error('Failed to resolve issue:', e); }
+  };
+
+  // Handle registration submit
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    if (!regUsername || !regEmail || !regPassword) {
+      setAuthError('Please fill in all fields.');
+      return;
+    }
+    
+    if (regPassword.length < 6) {
+      setAuthError('Password must be at least 6 characters.');
+      return;
+    }
+    
+    try {
+      setAuthLoading(true);
+      setAuthError('');
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: regUsername,
+          email: regEmail,
+          password: regPassword,
+          role: regRole
+        })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+      
+      // Clear forms and redirect to login with success message
+      setRegUsername('');
+      setRegEmail('');
+      setRegPassword('');
+      setRegRole('employee');
+      setAuthError('');
+      setAuthSuccess(`Account created for "${data.user.username}"! Please log in to continue.`);
+      setAuthType('login');
+    } catch (err) {
+      setAuthError(err.message || 'Registration failed. Username/Email might be taken or database server is offline.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    setUser(null);
+    setRole('logged-out');
+  };
   
   // Dashboard & Operations State
   const [alerts, setAlerts] = useState(INITIAL_ALERTS);
@@ -585,57 +927,241 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right panel login interface */}
-          <div className="glass-panel p-8 rounded-2xl glow-indigo border-slate-800/80 space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-slate-100">Portal Authentication</h2>
-              <p className="text-xs text-slate-400">Choose a default operational role to inspect dashboard access structures.</p>
-            </div>
+          {/* Right panel auth interface */}
+          <div className="glass-panel p-8 rounded-2xl glow-indigo border-slate-800/80 space-y-6 relative">
+            {authLoading && (
+              <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs flex flex-col items-center justify-center rounded-2xl z-20">
+                <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-xs font-semibold text-indigo-300 mt-3">Processing request...</span>
+              </div>
+            )}
 
-            <div className="space-y-4">
-              {/* Manager Card */}
-              <button 
-                onClick={() => setRole('manager')}
-                className="w-full text-left p-4 rounded-xl border border-indigo-500/20 bg-indigo-950/20 hover:bg-indigo-950/40 hover:border-indigo-500/40 transition-all group flex items-start justify-between gap-4 cursor-pointer"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4.5 h-4.5 text-indigo-400" />
-                    <span className="text-slate-200 font-semibold group-hover:text-indigo-300 transition-colors">Operations Manager</span>
+            {authType === 'login' ? (
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-bold text-slate-100">Portal Authentication</h2>
+                  <p className="text-xs text-slate-400">Enter your credentials to access the cognitive engine.</p>
+                </div>
+
+                {authError && (
+                  <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
+                    <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{authError}</span>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Full access to macro financials, override alerts, statutory calendar edits, meeting scheduling, and chat executive action triggers.
+                )}
+
+                {authSuccess && (
+                  <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 text-xs flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{authSuccess}</span>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-400">Username or Email</label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      value={loginIdentifier}
+                      onChange={(e) => setLoginIdentifier(e.target.value)}
+                      placeholder="e.g. sujal_kodge or name@company.com"
+                      className="w-full bg-slate-900/50 border border-slate-800 hover:border-indigo-500/30 focus:border-indigo-500/80 rounded-xl py-3 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-400">Security Passcode</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-slate-900/50 border border-slate-800 hover:border-indigo-500/30 focus:border-indigo-500/80 rounded-xl py-3 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 transition-all font-semibold rounded-xl py-3.5 shadow-lg shadow-indigo-500/20 text-white flex items-center justify-center gap-2 cursor-pointer mt-2"
+                >
+                  Access Console <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <div className="text-center pt-2">
+                  <p className="text-xs text-slate-400">
+                    Don't have an operational account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthType('register');
+                        setAuthError('');
+                        setAuthSuccess('');
+                      }}
+                      className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer underline underline-offset-2"
+                    >
+                      Register here
+                    </button>
                   </p>
                 </div>
-                <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-indigo-400 transition-all group-hover:translate-x-1 shrink-0 mt-1" />
-              </button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+                <div className="text-center space-y-1">
+                  <h2 className="text-2xl font-bold text-slate-100">Establish Profile</h2>
+                  <p className="text-xs text-slate-400">Create operational credentials and select security clearance.</p>
+                </div>
 
-              {/* Employee Card */}
-              <button 
-                onClick={() => setRole('employee')}
-                className="w-full text-left p-4 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-slate-900/80 hover:border-indigo-500/30 transition-all group flex items-start justify-between gap-4 cursor-pointer"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4.5 h-4.5 text-slate-400" />
-                    <span className="text-slate-200 font-semibold group-hover:text-indigo-300 transition-colors">Shift Operator / Employee</span>
+                {authError && (
+                  <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
+                    <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{authError}</span>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Personalized view highlighting shift timeline, personal vacation leave sub-form, read-only scheduler calendar with RSVPs, and localized chat helper chips.
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Username</label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      value={regUsername}
+                      onChange={(e) => setRegUsername(e.target.value)}
+                      placeholder="e.g. sujal_kodge"
+                      className="w-full bg-slate-900/50 border border-slate-800 hover:border-indigo-500/30 focus:border-indigo-500/80 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Email Address</label>
+                  <div className="relative">
+                    <Zap className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      placeholder="name@company.com"
+                      className="w-full bg-slate-900/50 border border-slate-800 hover:border-indigo-500/30 focus:border-indigo-500/80 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Create Passcode</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="password"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="Minimum 6 characters"
+                      className="w-full bg-slate-900/50 border border-slate-800 hover:border-indigo-500/30 focus:border-indigo-500/80 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-500 outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Account Type</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Employee — always selected, this is the only self-registration option */}
+                    <div className="p-2.5 rounded-xl border border-indigo-500 bg-indigo-950/20 glow-indigo flex flex-col gap-0.5 cursor-default">
+                      <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-indigo-400" /> Employee
+                      </span>
+                      <span className="text-[9px] text-emerald-400 leading-normal flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Assigned automatically
+                      </span>
+                    </div>
+
+                    {/* Manager — not self-registerable, redirects to login */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthType('login');
+                        setAuthError('');
+                        setRegUsername('');
+                        setRegEmail('');
+                        setRegPassword('');
+                        setRegRole('employee');
+                        setAuthSuccess('Manager accounts are pre-provisioned. Please use your manager credentials to log in.');
+                      }}
+                      className="p-2.5 rounded-xl border border-slate-800 bg-slate-900/20 hover:border-amber-500/40 hover:bg-amber-950/10 text-left transition-all cursor-pointer flex flex-col gap-0.5 group"
+                    >
+                      <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5 group-hover:text-amber-400 transition-colors">
+                        <Shield className="w-3.5 h-3.5 text-slate-600 group-hover:text-amber-400 transition-colors" /> Manager
+                      </span>
+                      <span className="text-[9px] text-slate-500 leading-normal group-hover:text-amber-400/70 transition-colors flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Pre-provisioned only
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 transition-all font-semibold rounded-xl py-3 shadow-lg shadow-indigo-500/20 text-white flex items-center justify-center gap-2 cursor-pointer mt-1"
+                >
+                  Register Account <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <div className="text-center pt-1.5">
+                  <p className="text-xs text-slate-400">
+                    Already have an operational account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthType('login');
+                        setAuthError('');
+                      }}
+                      className="text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer underline underline-offset-2"
+                    >
+                      Log in here
+                    </button>
                   </p>
                 </div>
-                <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-indigo-400 transition-all group-hover:translate-x-1 shrink-0 mt-1" />
-              </button>
-            </div>
-
-            <div className="text-center pt-2">
-              <span className="text-[10px] text-slate-500 tracking-widest uppercase">Secured by Cognitive Decision Engine v1.2</span>
-            </div>
+              </form>
+            )}
           </div>
         </div>
       </div>
     );
   }
+
+  // Helper calculations for dynamic timesheet and leaves
+  const employeeDailyHoursObj = user?.dailyHours || {
+    monday: { workHours: 8, overtimeHours: 0 },
+    tuesday: { workHours: 8, overtimeHours: 0 },
+    wednesday: { workHours: 8, overtimeHours: 0 },
+    thursday: { workHours: 8, overtimeHours: 0 },
+    friday: { workHours: 8, overtimeHours: 0 }
+  };
+
+  const getTimesheetTotals = (hoursObj) => {
+    let work = 0;
+    let overtime = 0;
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    days.forEach(day => {
+      if (hoursObj[day]) {
+        work += Number(hoursObj[day].workHours || 0);
+        overtime += Number(hoursObj[day].overtimeHours || 0);
+      }
+    });
+    return { work, overtime };
+  };
+
+  const employeeTotals = getTimesheetTotals(employeeDailyHoursObj);
+  const employeeLeaves = leaveRequests.filter(req => req.employee.toLowerCase() === (user?.username || '').toLowerCase() && req.status === 'approved');
+  const totalApprovedLeaveDays = employeeLeaves.reduce((sum, req) => sum + (req.days || 0), 0);
 
   return (
     <div className="min-h-screen flex flex-col relative text-slate-100 bg-slate-950 font-sans">
@@ -643,6 +1169,18 @@ export default function App() {
       {/* GLOBAL NAVBAR / HEADER */}
       <header className="sticky top-0 z-50 glass-panel border-b border-slate-900 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {/* Back button — shown when not on main dashboard tab */}
+          {activeTab !== 'dashboard' && (
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-800 bg-slate-900/50 hover:bg-slate-800/80 text-slate-400 hover:text-slate-100 text-xs font-semibold transition-all cursor-pointer mr-1"
+              title="Back to Dashboard"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Back</span>
+            </button>
+          )}
+
           <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-indigo-500/20">
             A
           </div>
@@ -657,41 +1195,63 @@ export default function App() {
 
         {/* Global Access Role Toggle Switch */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
-            <button
-              onClick={() => setRole('manager')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                role === 'manager' 
-                  ? 'bg-indigo-600 text-white shadow-md' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              Manager View
-            </button>
-            <button
-              onClick={() => setRole('employee')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                role === 'employee' 
-                  ? 'bg-indigo-600 text-white shadow-md' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
+          {user?.role === 'manager' ? (
+            <div className="flex items-center gap-2 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+              <button
+                onClick={() => setRole('manager')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  role === 'manager' 
+                    ? 'bg-indigo-600 text-white shadow-md' 
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                Manager View
+              </button>
+              <button
+                onClick={() => setRole('employee')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  role === 'employee' 
+                    ? 'bg-indigo-600 text-white shadow-md' 
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                Employee View
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-950/40 border border-indigo-500/20 text-indigo-400">
               <User className="w-3.5 h-3.5" />
-              Employee View
-            </button>
-          </div>
+              Employee Access
+            </div>
+          )}
 
           <div className="h-6 w-[1px] bg-slate-800"></div>
+
+          {/* User profile info */}
+          {user && (
+            <div className="hidden sm:flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-indigo-950/60 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-300 uppercase">
+                {user.username.substring(0, 2)}
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-xs font-semibold text-slate-200">{user.username}</span>
+                <span className="text-[9px] text-indigo-400 uppercase font-mono tracking-wider">{user.role}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="hidden sm:block h-6 w-[1px] bg-slate-800"></div>
 
           {/* Current date indicator */}
           <div className="hidden lg:flex flex-col text-right font-mono text-xs text-slate-400">
             <span>SYS_TIME: 2026-07-06</span>
-            <span className="text-[9px] text-indigo-400">STATUS: AGENTS_STABLE</span>
+            <span className="text-[9px] text-indigo-400">STATUS: ACTIVE_SESSION</span>
           </div>
 
           <button 
-            onClick={() => setRole('logged-out')}
+            onClick={handleLogout}
             className="flex items-center gap-1 bg-slate-900/50 hover:bg-red-950/20 text-slate-400 hover:text-red-400 border border-slate-800 hover:border-red-500/20 p-2 rounded-lg transition-all text-xs font-semibold cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -793,8 +1353,8 @@ export default function App() {
                     <div className="flex items-baseline gap-2">
                       {role === 'manager' ? (
                         <>
-                          <h3 className="text-3xl font-extrabold text-slate-50 tracking-tight">${cashFlow.toLocaleString()}</h3>
-                          <span className="text-xs text-emerald-400 font-semibold flex items-center gap-0.5">
+                          <h3 className="text-3xl font-extrabold text-slate-50 tracking-tight">₹{cashFlow.toLocaleString('en-IN')}</h3>
+                          <span className="text-xs text-emerald-400 font-semibold flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5 rounded">
                             <TrendingUp className="w-3.5 h-3.5" /> +4.2%
                           </span>
                         </>
@@ -806,7 +1366,7 @@ export default function App() {
                     </div>
                   </div>
                   <div className="w-12 h-12 rounded-lg bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0">
-                    <DollarSign className="w-5.5 h-5.5" />
+                    <IndianRupee className="w-5.5 h-5.5" />
                   </div>
                   <div className="absolute right-0 bottom-0 translate-y-3 translate-x-3 w-16 h-16 rounded-full bg-indigo-500/5 group-hover:scale-125 transition-all"></div>
                 </div>
@@ -820,8 +1380,8 @@ export default function App() {
                     <div className="flex items-baseline gap-2">
                       {role === 'manager' ? (
                         <>
-                          <h3 className="text-3xl font-extrabold text-slate-50 tracking-tight">${operationalCosts.toLocaleString()}</h3>
-                          <span className="text-xs text-emerald-400 font-semibold flex items-center gap-0.5">
+                          <h3 className="text-3xl font-extrabold text-slate-50 tracking-tight">₹{operationalCosts.toLocaleString('en-IN')}</h3>
+                          <span className="text-xs text-red-400 font-semibold flex items-center gap-0.5 bg-red-500/10 px-1.5 py-0.5 rounded">
                             <TrendingDown className="w-3.5 h-3.5" /> -1.8%
                           </span>
                         </>
@@ -865,86 +1425,395 @@ export default function App() {
 
               </div>
 
+              {/* Manager-only: Registered Employee Registry */}
+              {role === 'manager' && (
+                <div className="glass-panel p-6 rounded-xl border-slate-850 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-indigo-400" />
+                      <h3 className="text-lg font-bold text-slate-200">Employee Registry</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-bold">
+                        {employeeCount} Registered
+                      </span>
+                    </div>
+                  </div>
+
+                  {registeredEmployees.length === 0 ? (
+                    <p className="text-slate-400 text-sm text-center py-4">No employees registered yet.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[200px] overflow-y-auto pr-1">
+                      {registeredEmployees.map((emp) => (
+                        <div 
+                          key={emp._id} 
+                          onClick={() => {
+                            setSelectedEmployee(emp);
+                          }}
+                          className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/50 border border-slate-800 hover:border-indigo-500/30 hover:bg-slate-900/80 transition-all cursor-pointer"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-indigo-950/60 border border-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-300 uppercase shrink-0">
+                            {emp.username.substring(0, 2)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-200 truncate">{emp.username}</p>
+                            <p className="text-[10px] text-slate-500 truncate">{emp.email}</p>
+                          </div>
+                          <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+                            Active
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Employee-only: Issue / Problem Submission Panel */}
+              {role === 'employee' && (
+                <div className="glass-panel p-6 rounded-xl border-slate-850 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <FileWarning className="w-5 h-5 text-amber-400" />
+                    <h3 className="text-lg font-bold text-slate-200">Report a Problem</h3>
+                  </div>
+                  <p className="text-xs text-slate-400">Submit workplace issues or operational problems that need to be resolved by management.</p>
+
+                  {issueSubmitSuccess && (
+                    <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>{issueSubmitSuccess}</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Submission Form */}
+                    <form onSubmit={handleSubmitIssue} className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Issue Title *</label>
+                        <input
+                          type="text"
+                          required
+                          value={issueForm.title}
+                          onChange={(e) => setIssueForm({ ...issueForm, title: e.target.value })}
+                          placeholder="Brief title of the problem..."
+                          className="w-full bg-slate-900/50 border border-slate-800 hover:border-indigo-500/30 focus:border-indigo-500/70 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition-all"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Category</label>
+                          <select
+                            value={issueForm.category}
+                            onChange={(e) => setIssueForm({ ...issueForm, category: e.target.value })}
+                            className="w-full bg-slate-900/50 border border-slate-800 hover:border-indigo-500/30 focus:border-indigo-500/70 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none transition-all"
+                          >
+                            <option value="operational">Operational</option>
+                            <option value="safety">Safety</option>
+                            <option value="hr">HR</option>
+                            <option value="equipment">Equipment</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Priority</label>
+                          <select
+                            value={issueForm.priority}
+                            onChange={(e) => setIssueForm({ ...issueForm, priority: e.target.value })}
+                            className="w-full bg-slate-900/50 border border-slate-800 hover:border-indigo-500/30 focus:border-indigo-500/70 rounded-lg px-3 py-2 text-xs text-slate-100 outline-none transition-all"
+                          >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-500 font-semibold block uppercase tracking-wider">Description *</label>
+                        <textarea
+                          required
+                          value={issueForm.description}
+                          onChange={(e) => setIssueForm({ ...issueForm, description: e.target.value })}
+                          placeholder="Describe the problem in detail..."
+                          rows={3}
+                          className="w-full bg-slate-900/50 border border-slate-800 hover:border-indigo-500/30 focus:border-indigo-500/70 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition-all resize-none"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs transition-all shadow-lg shadow-amber-600/10 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <UploadCloud className="w-4 h-4" /> Submit Issue to Management
+                      </button>
+                    </form>
+
+                    {/* My Submitted Issues list */}
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">My Submitted Issues</span>
+                      {issues.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-slate-600 gap-2">
+                          <FileWarning className="w-8 h-8 opacity-40" />
+                          <p className="text-xs">No issues submitted yet.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                          {issues.map((issue) => (
+                            <div key={issue.id} className="p-3 rounded-lg bg-slate-900/50 border border-slate-800 space-y-1.5">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs font-semibold text-slate-200">{issue.title}</p>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                  issue.priority === 'critical' ? 'bg-red-500/10 border border-red-500/20 text-red-400' :
+                                  issue.priority === 'high' ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400' :
+                                  issue.priority === 'medium' ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400' :
+                                  'bg-slate-800 text-slate-400'
+                                }`}>{issue.priority.toUpperCase()}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">{issue.category}</span>
+                                <span>{issue.submittedAt}</span>
+                                <span className="ml-auto text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Submitted</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Grid block: Alerts Feed (Left) & Personal Shift Details (Right) */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* 2. Real-Time Operational Alerts Feed ("Active Countermeasures") */}
                 <div className="glass-panel p-6 rounded-xl border-slate-850 lg:col-span-2 space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-5 h-5 text-amber-400" />
-                      <h3 className="text-lg font-bold text-slate-200">Active Countermeasures & Alerts</h3>
+                      <h3 className="text-lg font-bold text-slate-200">Active Countermeasures &amp; Alerts</h3>
                     </div>
-                    <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-mono">
-                      {alerts.filter(a => a.status === 'active').length} UNRESOLVED
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-mono">
+                        {alerts.filter(a => a.status === 'active').length} SYS
+                      </span>
+                      {role === 'manager' && (
+                        <span className={`px-2 py-0.5 rounded border text-[10px] font-mono font-bold ${
+                          issues.filter(i => i.status === 'open').length > 0
+                            ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 animate-pulse'
+                            : 'bg-slate-900 border-slate-800 text-slate-400'
+                        }`}>
+                          {issues.filter(i => i.status === 'open').length} REPORTS
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                    {alerts.length === 0 ? (
-                      <p className="text-slate-400 text-sm py-4">No operational notifications detected.</p>
-                    ) : (
-                      alerts.map((alert) => (
-                        <div 
-                          key={alert.id}
-                          className={`p-3.5 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all ${
-                            alert.status === 'resolved'
-                              ? 'bg-slate-900/10 border-slate-900 text-slate-500'
-                              : alert.severity === 'high'
-                                ? 'bg-red-950/20 border-red-900/40 text-red-200'
-                                : alert.severity === 'medium'
-                                  ? 'bg-amber-950/20 border-amber-900/40 text-amber-200'
-                                  : 'bg-indigo-950/20 border-indigo-900/40 text-indigo-200'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className="font-mono text-[10px] text-slate-500 shrink-0 mt-1">{alert.time}</span>
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                                  alert.status === 'resolved'
-                                    ? 'bg-slate-800 text-slate-400'
-                                    : alert.severity === 'high'
-                                      ? 'bg-red-500/10 border border-red-500/20 text-red-400'
-                                      : alert.severity === 'medium'
-                                        ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
-                                        : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'
-                                }`}>
-                                  {alert.line}
-                                </span>
-                                {alert.status === 'resolved' && (
-                                  <span className="text-[10px] font-medium text-emerald-400 flex items-center gap-1">
-                                    <Check className="w-3 h-3" /> Resolved
+                  {/* Tab switcher for manager */}
+                  {role === 'manager' && (
+                    <div className="flex items-center gap-1 bg-slate-900/60 p-1 rounded-lg border border-slate-800 w-fit">
+                      <button
+                        onClick={() => setActiveAlertsTab('system')}
+                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                          (activeAlertsTab || 'system') === 'system'
+                            ? 'bg-indigo-600 text-white shadow'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        System Alerts
+                      </button>
+                      <button
+                        onClick={() => setActiveAlertsTab('reports')}
+                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          activeAlertsTab === 'reports'
+                            ? 'bg-rose-600 text-white shadow'
+                            : 'text-slate-400 hover:text-rose-300'
+                        }`}
+                      >
+                        <FileWarning className="w-3 h-3" />
+                        Employee Reports
+                        {issues.filter(i => i.status === 'open').length > 0 && (
+                          <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] flex items-center justify-center font-black">
+                            {issues.filter(i => i.status === 'open').length}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* System Alerts Feed */}
+                  {(role === 'employee' || (activeAlertsTab || 'system') === 'system') && (
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                      {alerts.length === 0 ? (
+                        <p className="text-slate-400 text-sm py-4">No operational notifications detected.</p>
+                      ) : (
+                        alerts.map((alert) => (
+                          <div 
+                            key={alert.id}
+                            className={`p-3.5 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all ${
+                              alert.status === 'resolved'
+                                ? 'bg-slate-900/10 border-slate-900 text-slate-500'
+                                : alert.severity === 'high'
+                                  ? 'bg-red-950/20 border-red-900/40 text-red-200'
+                                  : alert.severity === 'medium'
+                                    ? 'bg-amber-950/20 border-amber-900/40 text-amber-200'
+                                    : 'bg-indigo-950/20 border-indigo-900/40 text-indigo-200'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className="font-mono text-[10px] text-slate-500 shrink-0 mt-1">{alert.time}</span>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                    alert.status === 'resolved'
+                                      ? 'bg-slate-800 text-slate-400'
+                                      : alert.severity === 'high'
+                                        ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+                                        : alert.severity === 'medium'
+                                          ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+                                          : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'
+                                  }`}>
+                                    {alert.line}
                                   </span>
-                                )}
+                                  {alert.status === 'resolved' && (
+                                    <span className="text-[10px] font-medium text-emerald-400 flex items-center gap-1">
+                                      <Check className="w-3 h-3" /> Resolved
+                                    </span>
+                                  )}
+                                </div>
+                                <p className={`text-sm ${alert.status === 'resolved' ? 'line-through text-slate-500' : 'text-slate-200 font-medium'}`}>{alert.text}</p>
                               </div>
-                              <p className={`text-sm ${alert.status === 'resolved' ? 'line-through text-slate-500' : 'text-slate-200 font-medium'}`}>{alert.text}</p>
                             </div>
+                            
+                            {role === 'manager' && alert.status === 'active' && (
+                              <button
+                                onClick={() => setSelectedAlertForResolution(alert)}
+                                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs cursor-pointer shadow-md transition-all self-end sm:self-center"
+                              >
+                                Resolve &amp; Clear
+                              </button>
+                            )}
                           </div>
-                          
-                          {/* Manager quick override actions */}
-                          {role === 'manager' && alert.status === 'active' && (
-                            <button
-                              onClick={() => handleResolveAlert(alert.id)}
-                              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs cursor-pointer shadow-md transition-all self-end sm:self-center"
-                            >
-                              Resolve & Clear
-                            </button>
-                          )}
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* Employee Reports Feed — manager only */}
+                  {role === 'manager' && activeAlertsTab === 'reports' && (
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                      {issues.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-slate-600 gap-2">
+                          <FileWarning className="w-8 h-8 opacity-40" />
+                          <p className="text-xs text-slate-400">No employee reports yet. Issues submitted will appear here in real-time.</p>
                         </div>
-                      ))
-                    )}
-                  </div>
+                      ) : (
+                        issues.map((issue) => (
+                          <div
+                            key={issue._id}
+                            className={`p-3.5 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all ${
+                              issue.status === 'resolved'
+                                ? 'bg-slate-900/10 border-slate-900 opacity-60'
+                                : issue.priority === 'critical'
+                                  ? 'bg-red-950/25 border-red-900/50'
+                                  : issue.priority === 'high'
+                                    ? 'bg-amber-950/20 border-amber-900/40'
+                                    : 'bg-rose-950/15 border-rose-900/30'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3 min-w-0">
+                              {/* Source indicator */}
+                              <div className="flex flex-col items-center gap-1 shrink-0 mt-0.5">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black border ${
+                                  issue.status === 'resolved'
+                                    ? 'bg-slate-800 border-slate-700 text-slate-500'
+                                    : issue.priority === 'critical'
+                                      ? 'bg-red-950/60 border-red-500/30 text-red-400'
+                                      : issue.priority === 'high'
+                                        ? 'bg-amber-950/60 border-amber-500/30 text-amber-400'
+                                        : 'bg-rose-950/40 border-rose-500/20 text-rose-400'
+                                }`}>
+                                  {issue.submittedBy?.substring(0, 2).toUpperCase()}
+                                </div>
+                              </div>
+
+                              <div className="space-y-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {/* Employee report badge */}
+                                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                                    Employee Report
+                                  </span>
+                                  <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                    issue.priority === 'critical' ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+                                    : issue.priority === 'high' ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+                                    : issue.priority === 'medium' ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'
+                                    : 'bg-slate-800 text-slate-500'
+                                  }`}>
+                                    {issue.priority}
+                                  </span>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 capitalize">
+                                    {issue.category}
+                                  </span>
+                                  {issue.status === 'resolved' && (
+                                    <span className="text-[10px] text-emerald-400 flex items-center gap-0.5">
+                                      <Check className="w-3 h-3" /> Resolved
+                                    </span>
+                                  )}
+                                </div>
+                                <p className={`text-sm font-semibold ${issue.status === 'resolved' ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                                  {issue.title}
+                                </p>
+                                <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{issue.description}</p>
+                                <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                  <User className="w-3 h-3" />
+                                  <span className="font-medium text-slate-400">{issue.submittedBy}</span>
+                                  <span>·</span>
+                                  <span>{new Date(issue.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {issue.status !== 'resolved' && (
+                              <button
+                                onClick={() => handleResolveIssue(issue._id)}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-xs cursor-pointer shadow-md transition-all self-end sm:self-center shrink-0 flex items-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5" /> Resolve
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Dynamic Shift/Productivity Panel (Hides sensitive graphs for employee, shows localized shift) */}
                 <div className="glass-panel p-6 rounded-xl border-slate-850 space-y-4 flex flex-col justify-between">
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-indigo-400" />
-                      <h3 className="text-lg font-bold text-slate-200">
-                        {role === 'manager' ? 'Ops Resource Load' : 'My Productivity & Shift'}
-                      </h3>
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-indigo-400" />
+                        <h3 className="text-lg font-bold text-slate-200">
+                          {role === 'manager' ? 'Ops Resource Load' : 'My Productivity & Shift'}
+                        </h3>
+                      </div>
+                      {role === 'employee' && (
+                        <button
+                          onClick={() => {
+                            setEmployeeLogHours({
+                              workHours: user?.workHours || 40,
+                              overtimeHours: user?.overtimeHours || 0
+                            });
+                            setShowLogHoursModal(true);
+                          }}
+                          className="px-2.5 py-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                        >
+                          Log Hours
+                        </button>
+                      )}
                     </div>
                     
                     {role === 'manager' ? (
@@ -977,14 +1846,45 @@ export default function App() {
                     ) : (
                       // Employee Productivity state
                       <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3 text-center">
-                          <div className="p-2 bg-slate-900/50 rounded-lg border border-slate-800">
-                            <span className="text-[10px] text-slate-500 uppercase">My Daily Yield</span>
-                            <h4 className="text-lg font-extrabold text-emerald-400">112%</h4>
+                        <div className="grid grid-cols-4 gap-1.5 text-center">
+                          <div className="p-1.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col justify-center min-w-0">
+                            <span className="text-[8px] text-slate-500 uppercase tracking-tight block truncate">Daily Yield</span>
+                            <h4 className="text-xs sm:text-sm font-extrabold text-emerald-400">112%</h4>
                           </div>
-                          <div className="p-2 bg-slate-900/50 rounded-lg border border-slate-800">
-                            <span className="text-[10px] text-slate-500 uppercase">Active Hours</span>
-                            <h4 className="text-lg font-extrabold text-indigo-400">7.5 hr</h4>
+                          <div className="p-1.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col justify-center min-w-0">
+                            <span className="text-[8px] text-slate-500 uppercase tracking-tight block truncate">Active Hours</span>
+                            <h4 className="text-xs sm:text-sm font-extrabold text-indigo-400">
+                              {employeeTotals.work}h
+                            </h4>
+                          </div>
+                          <div className="p-1.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col justify-center min-w-0">
+                            <span className="text-[8px] text-slate-500 uppercase tracking-tight block truncate">Overtime</span>
+                            <h4 className="text-xs sm:text-sm font-extrabold text-amber-400">
+                              {employeeTotals.overtime}h
+                            </h4>
+                          </div>
+                          <div className="p-1.5 bg-slate-900/50 rounded-lg border border-slate-800 flex flex-col justify-center min-w-0">
+                            <span className="text-[8px] text-slate-500 uppercase tracking-tight block truncate">Leaves Taken</span>
+                            <h4 className="text-xs sm:text-sm font-extrabold text-rose-400">
+                              {totalApprovedLeaveDays}d
+                            </h4>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-xs text-slate-400">Weekly Timesheet (Business Days)</span>
+                          <div className="grid grid-cols-5 gap-1 text-center">
+                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((dayName, idx) => {
+                              const key = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'][idx];
+                              const dayData = employeeDailyHoursObj[key] || { workHours: 8, overtimeHours: 0 };
+                              return (
+                                <div key={key} className="p-1 bg-slate-900/40 rounded border border-slate-850">
+                                  <span className="text-[8px] text-slate-500 font-bold block uppercase">{dayName}</span>
+                                  <span className="text-[10px] text-indigo-400 font-semibold block">{dayData.workHours}h</span>
+                                  <span className="text-amber-400 text-[8px] block">+{dayData.overtimeHours}h</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -1103,11 +2003,12 @@ export default function App() {
                         <LineChart data={correlationData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
                           <XAxis dataKey="name" stroke="rgba(255,255,255,0.3)" fontSize={9} />
-                          <YAxis stroke="rgba(255,255,255,0.3)" fontSize={9} />
+                          <YAxis stroke="rgba(255,255,255,0.3)" fontSize={9} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
                           <Tooltip 
                             contentStyle={{ background: '#0f172a', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '8px' }}
                             labelStyle={{ color: '#94a3b8', fontSize: 10 }}
                             itemStyle={{ color: '#fff', fontSize: 11 }}
+                            formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, undefined]}
                           />
                           <Line type="monotone" dataKey="adSpend" name="Marketing Cost" stroke="#6366f1" strokeWidth={2} dot={false} />
                           <Line type="monotone" dataKey="registerSales" name="Store Sales" stroke="#10b981" strokeWidth={2} dot={false} />
@@ -1840,6 +2741,318 @@ export default function App() {
             <MessageSquare className="w-6 h-6 group-hover:rotate-12 transition-all" />
             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-950 rounded-full"></span>
           </button>
+
+          {/* Selected Employee Details Modal (Manager Only) */}
+          {role === 'manager' && selectedEmployee && (() => {
+            const selectedEmpLeaves = leaveRequests.filter(
+              req => req.employee.toLowerCase() === selectedEmployee.username.toLowerCase() && req.status === 'approved'
+            );
+            const selectedEmpLeaveDays = selectedEmpLeaves.reduce((sum, r) => sum + (r.days || 0), 0);
+            
+            const selectedEmpDailyHours = selectedEmployee.dailyHours || {
+              monday: { workHours: 8, overtimeHours: 0 },
+              tuesday: { workHours: 8, overtimeHours: 0 },
+              wednesday: { workHours: 8, overtimeHours: 0 },
+              thursday: { workHours: 8, overtimeHours: 0 },
+              friday: { workHours: 8, overtimeHours: 0 },
+            };
+            const selectedEmpTotals = getTimesheetTotals(selectedEmpDailyHours);
+            
+            return (
+              <div className="fixed inset-0 bg-slate-950/80 backdrop-filter backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="glass-panel w-full max-w-md p-6 rounded-2xl border-slate-800 glow-indigo space-y-5">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                      <User className="w-5 h-5 text-indigo-400" /> Employee Profile
+                    </h3>
+                    <button 
+                      onClick={() => setSelectedEmployee(null)}
+                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Profile Details */}
+                    <div className="flex items-center gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-850">
+                      <div className="w-12 h-12 rounded-full bg-indigo-950/60 border border-indigo-500/20 flex items-center justify-center text-lg font-bold text-indigo-300 uppercase shrink-0">
+                        {selectedEmployee.username.substring(0, 2)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-bold text-slate-100 truncate">{selectedEmployee.username}</p>
+                        <p className="text-xs text-slate-400 truncate">{selectedEmployee.email}</p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Role: <span className="text-indigo-400 uppercase font-mono">{selectedEmployee.role}</span>
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          Joined: {new Date(selectedEmployee.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Summary Totals */}
+                    <div className="grid grid-cols-3 gap-2 text-center bg-slate-900/50 p-2.5 rounded-lg border border-slate-850">
+                      <div>
+                        <span className="text-[8px] text-slate-500 uppercase tracking-wider block">Regular Hours</span>
+                        <span className="text-sm font-extrabold text-indigo-400">{selectedEmpTotals.work} hr</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-slate-500 uppercase tracking-wider block">Overtime</span>
+                        <span className="text-sm font-extrabold text-amber-400">+{selectedEmpTotals.overtime} OT</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-slate-500 uppercase tracking-wider block">Approved Leaves</span>
+                        <span className="text-sm font-extrabold text-rose-400">{selectedEmpLeaveDays} days</span>
+                      </div>
+                    </div>
+
+                    {/* Weekday Timesheet Table */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Daily Active Hours Breakdown</span>
+                      <div className="overflow-hidden border border-slate-850 rounded-lg">
+                        <table className="w-full text-xs text-left text-slate-300">
+                          <thead className="bg-slate-900/80 text-[10px] uppercase font-mono text-slate-400 border-b border-slate-850">
+                            <tr>
+                              <th className="px-3 py-1.5 font-semibold">Business Day</th>
+                              <th className="px-3 py-1.5 text-center font-semibold">Regular</th>
+                              <th className="px-3 py-1.5 text-center font-semibold">Overtime</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-900 bg-slate-900/20">
+                            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].map((day) => {
+                              const dayData = selectedEmpDailyHours[day] || { workHours: 8, overtimeHours: 0 };
+                              return (
+                                <tr key={day} className="hover:bg-slate-900/30">
+                                  <td className="px-3 py-1.5 font-medium capitalize text-slate-300">{day}</td>
+                                  <td className="px-3 py-1.5 text-center text-indigo-400 font-bold">{dayData.workHours}h</td>
+                                  <td className="px-3 py-1.5 text-center text-amber-400 font-bold">+{dayData.overtimeHours}h</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Approved Leaves History */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Leave History</span>
+                      <div className="max-h-[100px] overflow-y-auto space-y-1.5 pr-1">
+                        {selectedEmpLeaves.length === 0 ? (
+                          <p className="text-[11px] text-slate-500 italic">No approved leaves recorded.</p>
+                        ) : (
+                          selectedEmpLeaves.map(req => (
+                            <div key={req.id} className="p-2 rounded bg-slate-900/40 border border-slate-850 text-[10px] flex items-center justify-between text-slate-300">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-slate-200 truncate">{req.reason}</p>
+                                <p className="text-[8px] text-slate-500">{req.startDate} to {req.endDate}</p>
+                              </div>
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[8px]">
+                                {req.days} days
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end pt-3 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEmployee(null)}
+                        className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer transition-all shadow-lg shadow-indigo-600/10"
+                      >
+                        Close Profile
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+          {/* Employee Log Hours Modal */}
+          {role === 'employee' && showLogHoursModal && (
+            <div className="fixed inset-0 bg-slate-950/80 backdrop-filter backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="glass-panel w-full max-w-md p-6 rounded-2xl border-slate-800 glow-indigo space-y-5">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-indigo-400" /> Log Work Hours
+                  </h3>
+                  <button 
+                    onClick={() => setShowLogHoursModal(false)}
+                    className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-400">
+                    Submit the exact amount of regular and overtime hours you worked. This telemetry will sync to management.
+                  </p>
+
+                  <form onSubmit={handleEmployeeLogHours} className="space-y-4">
+                    {saveHoursSuccess && (
+                      <div className="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>{saveHoursSuccess}</span>
+                      </div>
+                    )}
+
+                    {logHoursError && (
+                      <div className="p-2.5 rounded-lg bg-red-950/30 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                        <span>{logHoursError}</span>
+                      </div>
+                    )}
+                    
+                    <div className="max-h-[300px] overflow-y-auto pr-1 space-y-3">
+                      {['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].map((day) => (
+                        <div key={day} className="p-3 bg-slate-900/50 rounded-lg border border-slate-850 space-y-2">
+                          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">{day}</span>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-slate-500 font-semibold block">Regular Hours</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="24"
+                                required
+                                value={employeeLogHours[day]?.workHours || 0}
+                                onChange={(e) => setEmployeeLogHours({
+                                  ...employeeLogHours,
+                                  [day]: { ...employeeLogHours[day], workHours: e.target.value }
+                                })}
+                                className="w-full bg-slate-950 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-slate-500 font-semibold block">Overtime Hours</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="24"
+                                required
+                                value={employeeLogHours[day]?.overtimeHours || 0}
+                                onChange={(e) => setEmployeeLogHours({
+                                  ...employeeLogHours,
+                                  [day]: { ...employeeLogHours[day], overtimeHours: e.target.value }
+                                })}
+                                className="w-full bg-slate-950 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setShowLogHoursModal(false)}
+                        className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingHours}
+                        className="px-4.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer shadow-lg shadow-indigo-600/10 disabled:opacity-50"
+                      >
+                        {isSavingHours ? 'Saving...' : 'Submit timesheet'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* AI Incident Resolution Report Modal */}
+          {role === 'manager' && selectedAlertForResolution && (() => {
+            const report = AI_RESOLUTION_REPORTS[selectedAlertForResolution.text] || AI_RESOLUTION_REPORTS['generic'];
+            return (
+              <div className="fixed inset-0 bg-slate-950/80 backdrop-filter backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="glass-panel w-full max-w-md p-6 rounded-2xl border-slate-800 glow-indigo space-y-5">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" /> AI Resolution Report
+                    </h3>
+                    <button 
+                      onClick={() => setSelectedAlertForResolution(null)}
+                      className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Alert Metadata */}
+                    <div className="p-3.5 bg-slate-900/40 rounded-xl border border-slate-850 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="font-mono text-slate-500">{selectedAlertForResolution.time}</span>
+                        <span className={`font-mono px-1.5 py-0.5 rounded font-bold uppercase ${
+                          selectedAlertForResolution.severity === 'high'
+                            ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            : selectedAlertForResolution.severity === 'medium'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                        }`}>
+                          {selectedAlertForResolution.severity} Severity
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-slate-200">{selectedAlertForResolution.text}</p>
+                    </div>
+
+                    {/* AI Explanation Paragraph */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">AI System Diagnosis</span>
+                      <div className="p-3 bg-slate-950 border border-slate-900 rounded-lg text-xs text-slate-300 leading-relaxed font-sans select-none">
+                        {report.analysis}
+                      </div>
+                    </div>
+
+                    {/* Step-by-Step Actions */}
+                    <div className="space-y-2">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Autonomic Resolution Protocol</span>
+                      <div className="space-y-2 select-none">
+                        {report.steps.map((step, idx) => (
+                          <div key={idx} className="flex gap-2.5 items-start text-xs text-slate-300 bg-indigo-950/5 border border-indigo-950/10 p-2 rounded-lg">
+                            <span className="w-4 h-4 rounded bg-indigo-950 border border-indigo-800 text-[10px] font-bold text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+                              {idx + 1}
+                            </span>
+                            <span className="leading-relaxed">{step}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAlertForResolution(null)}
+                        className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleResolveAlert(selectedAlertForResolution.id);
+                          setSelectedAlertForResolution(null);
+                        }}
+                        className="px-4.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer shadow-lg shadow-indigo-600/10"
+                      >
+                        Confirm Resolution
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
         </div>
       )}

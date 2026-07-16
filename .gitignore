@@ -28,3 +28,6 @@ git_installer.exe
 gh_installer.zip
 PortableGit/
 
+# Local env files
+.env
+
