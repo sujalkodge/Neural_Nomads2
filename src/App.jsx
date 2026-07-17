@@ -70,17 +70,33 @@ async function apiFetch(endpoint, options = {}) {
   const response = await fetch(url, { ...options, headers });
   
   let data = null;
+  let text = '';
+  try {
+    text = await response.text();
+  } catch (e) {
+    console.error('Error reading response text:', e);
+  }
+
   const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
+  if (contentType && contentType.includes('application/json') && text && text.trim().length > 0) {
     try {
-      data = await response.json();
+      data = JSON.parse(text);
     } catch (e) {
       console.error('Error parsing JSON:', e);
     }
   }
   
   if (!response.ok) {
-    const errorMsg = (data && data.message) || `Request failed with status ${response.status}`;
+    let errorMsg = (data && data.message) || '';
+    if (!errorMsg) {
+      if (text && text.trim().length > 0) {
+        errorMsg = text.trim().startsWith('<') 
+          ? `Server error (HTML response: ${text.trim().slice(0, 100)}...)`
+          : text.trim().slice(0, 200);
+      } else {
+        errorMsg = `Request failed with status ${response.status}`;
+      }
+    }
     throw new Error(errorMsg);
   }
   
