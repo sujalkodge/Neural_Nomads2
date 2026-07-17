@@ -266,6 +266,10 @@ export default function App() {
         })
       });
       
+      if (!data || !data.token || !data.user) {
+        throw new Error('Login failed: Server returned an empty response. If you deployed to Render, verify that you deployed it as a "Web Service" instead of a "Static Site".');
+      }
+      
       localStorage.setItem('auth_token', data.token);
       setUser(data.user);
       setRole(data.user.role);
@@ -286,8 +290,10 @@ export default function App() {
     const fetchEmployees = async () => {
       try {
         const data = await apiFetch('/api/manager/employees');
-        setEmployeeCount(data.count);
-        setRegisteredEmployees(data.employees);
+        if (data) {
+          setEmployeeCount(data.count || 0);
+          setRegisteredEmployees(data.employees || []);
+        }
       } catch (e) {
         console.error('Failed to fetch employees:', e);
       }
@@ -319,6 +325,10 @@ export default function App() {
         body: JSON.stringify({ dailyHours: employeeLogHours })
       });
       
+      if (!data) {
+        throw new Error('Failed to update hours: Received empty response from server.');
+      }
+      
       // Update local logged-in user profile state
       setUser(data);
       setSaveHoursSuccess('Your daily work hours have been successfully logged!');
@@ -344,6 +354,9 @@ export default function App() {
         method: 'POST',
         body: JSON.stringify(issueForm)
       });
+      if (!saved) {
+        throw new Error('Failed to submit issue: Received empty response from server.');
+      }
       setIssues(prev => [saved, ...prev]);
       setIssueForm({ title: '', category: 'operational', description: '', priority: 'medium' });
       setIssueSubmitSuccess('Issue submitted! Management has been notified in real-time.');
@@ -360,7 +373,9 @@ export default function App() {
     const fetchIssues = async () => {
       try {
         const data = await apiFetch('/api/issues');
-        setIssues(data);
+        if (data) {
+          setIssues(data);
+        }
       } catch (e) { console.error('Failed to fetch issues:', e); }
     };
     fetchIssues();
@@ -375,7 +390,9 @@ export default function App() {
         method: 'PATCH',
         body: JSON.stringify({ status: 'resolved' })
       });
-      setIssues(prev => prev.map(i => i._id === issueId ? updated : i));
+      if (updated) {
+        setIssues(prev => prev.map(i => i._id === issueId ? updated : i));
+      }
     } catch (e) { console.error('Failed to resolve issue:', e); }
   };
 
@@ -404,6 +421,10 @@ export default function App() {
           role: regRole
         })
       });
+      
+      if (!data || !data.user) {
+        throw new Error('Registration failed: Server returned an empty response. If you deployed to Render, verify that you deployed it as a "Web Service" instead of a "Static Site".');
+      }
       
       // Clear forms and redirect to login with success message
       setRegUsername('');
