@@ -52,6 +52,41 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
+async function apiFetch(endpoint, options = {}) {
+  const url = `${API_BASE}${endpoint}`;
+  const headers = { ...options.headers };
+  
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+  
+  const token = localStorage.getItem('auth_token');
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const response = await fetch(url, { ...options, headers });
+  
+  let data = null;
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch (e) {
+      console.error('Error parsing JSON:', e);
+    }
+  }
+  
+  if (!response.ok) {
+    const errorMsg = (data && data.message) || `Request failed with status ${response.status}`;
+    throw new Error(errorMsg);
+  }
+  
+  return data;
+}
+
 // Mock data for initial states
 const INITIAL_ALERTS = [
   { id: 1, time: '10:00 AM', line: 'Line 3', text: 'Machine Cycle Glitch Detected on Line 3', severity: 'high', status: 'active', type: 'mechanical' },
@@ -182,21 +217,12 @@ export default function App() {
       
       try {
         setAuthLoading(true);
-        const res = await fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (res.ok) {
-          const userData = await res.json();
-          setUser(userData);
-          setRole(userData.role);
-        } else {
-          localStorage.removeItem('auth_token');
-        }
+        const userData = await apiFetch('/api/auth/me');
+        setUser(userData);
+        setRole(userData.role);
       } catch (error) {
         console.error('Session verification error:', error);
+        localStorage.removeItem('auth_token');
       } finally {
         setAuthLoading(false);
       }
@@ -216,21 +242,13 @@ export default function App() {
       setAuthLoading(true);
       setAuthError('');
       setAuthSuccess('');
-      const res = await fetch('/api/auth/login', {
+      const data = await apiFetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           loginIdentifier,
           password: loginPassword
         })
       });
-      
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
       
       localStorage.setItem('auth_token', data.token);
       setUser(data.user);
@@ -251,15 +269,9 @@ export default function App() {
     if (role !== 'manager') return;
     const fetchEmployees = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
-        const res = await fetch('/api/manager/employees', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setEmployeeCount(data.count);
-          setRegisteredEmployees(data.employees);
-        }
+        const data = await apiFetch('/api/manager/employees');
+        setEmployeeCount(data.count);
+        setRegisteredEmployees(data.employees);
       } catch (e) {
         console.error('Failed to fetch employees:', e);
       }
@@ -286,18 +298,10 @@ export default function App() {
     }
 
     try {
-      const token = localStorage.getItem('auth_token');
-      const res = await fetch('/api/employee/hours', {
+      const data = await apiFetch('/api/employee/hours', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ dailyHours: employeeLogHours })
       });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update hours');
       
       // Update local logged-in user profile state
       setUser(data);
@@ -320,25 +324,17 @@ export default function App() {
     e.preventDefault();
     if (!issueForm.title || !issueForm.description) return;
     try {
-      const token = localStorage.getItem('auth_token');
-      const res = await fetch('/api/issues', {
+      const saved = await apiFetch('/api/issues', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(issueForm)
       });
-      if (res.ok) {
-        const saved = await res.json();
-        setIssues(prev => [saved, ...prev]);
-        setIssueForm({ title: '', category: 'operational', description: '', priority: 'medium' });
-        setIssueSubmitSuccess('Issue submitted! Management has been notified in real-time.');
-        setTimeout(() => setIssueSubmitSuccess(''), 4000);
-      } else {
-        const err = await res.json();
-        setIssueSubmitSuccess(`Error: ${err.message}`);
-      }
+      setIssues(prev => [saved, ...prev]);
+      setIssueForm({ title: '', category: 'operational', description: '', priority: 'medium' });
+      setIssueSubmitSuccess('Issue submitted! Management has been notified in real-time.');
+      setTimeout(() => setIssueSubmitSuccess(''), 4000);
     } catch (error) {
       console.error('Issue submit failed:', error);
-      setIssueSubmitSuccess('Network error. Please try again.');
+      setIssueSubmitSuccess(`Error: ${error.message || 'Network error. Please try again.'}`);
     }
   };
 
@@ -347,14 +343,8 @@ export default function App() {
     if (role === 'logged-out') return;
     const fetchIssues = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
-        const res = await fetch('/api/issues', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setIssues(data);
-        }
+        const data = await apiFetch('/api/issues');
+        setIssues(data);
       } catch (e) { console.error('Failed to fetch issues:', e); }
     };
     fetchIssues();
@@ -365,16 +355,11 @@ export default function App() {
   // Manager: resolve an employee-reported issue
   const handleResolveIssue = async (issueId) => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const res = await fetch(`/api/issues/${issueId}`, {
+      const updated = await apiFetch(`/api/issues/${issueId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status: 'resolved' })
       });
-      if (res.ok) {
-        const updated = await res.json();
-        setIssues(prev => prev.map(i => i._id === issueId ? updated : i));
-      }
+      setIssues(prev => prev.map(i => i._id === issueId ? updated : i));
     } catch (e) { console.error('Failed to resolve issue:', e); }
   };
 
@@ -394,11 +379,8 @@ export default function App() {
     try {
       setAuthLoading(true);
       setAuthError('');
-      const res = await fetch('/api/auth/register', {
+      const data = await apiFetch('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           username: regUsername,
           email: regEmail,
@@ -406,11 +388,6 @@ export default function App() {
           role: regRole
         })
       });
-      
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
       
       // Clear forms and redirect to login with success message
       setRegUsername('');

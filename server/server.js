@@ -5,6 +5,11 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from './models/User.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Issue Schema (inline)
 const IssueSchema = new mongoose.Schema({
@@ -328,6 +333,23 @@ app.patch('/api/employee/hours', authenticateToken, async (req, res) => {
   }
 });
 
+
+// Serve static assets in production
+const distPath = path.join(__dirname, '../dist');
+app.use(express.static(distPath));
+
+// Wildcard fallback route to serve index.html for SPA routing (only for non-API routes)
+app.get('*any', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(distPath, 'index.html'), (err) => {
+      if (err) {
+        res.status(404).send('Frontend build not found. Please run npm run build first.');
+      }
+    });
+  } else {
+    res.status(404).json({ message: 'API route not found' });
+  }
+});
 
 // Start Server
 app.listen(PORT, () => {
